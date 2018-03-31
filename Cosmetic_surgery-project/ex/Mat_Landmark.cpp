@@ -17,9 +17,9 @@ using namespace cv;
 //각도조절
 double changeAngle(const dlib::full_object_detection& d)
 {
-	int new_x = abs(d.part(27).x() - d.part(30).x());
+	int new_x = d.part(27).x() - d.part(30).x();
 	int new_y = d.part(30).y() - d.part(27).y();
-	double theta = RAD_TO_DEG * atan2(new_y, new_x);
+	double theta = atan2(new_y, new_x);
 	cout << "new_x : " << new_x << " new_y : " << new_y << " theta : " << theta << endl;
 	return theta;
 }
@@ -42,11 +42,14 @@ typedef struct pos {
 }pos;
 pos rotate(int x, int y, int c, int w,double theta)
 {
+	float pi = 3.141592;
+	theta = theta-1.53;
 	pos p;
 	double cR = cos(theta);
 	double sR = sin(theta);
-	p.x = (cR * (x - c) - sR * (y - w)) + c;
-	p.y = (sR * (x - c) + cR * (y - w)) + w;
+	p.x = (y - w)*sR + (x - c)*cR + c;
+	p.y = (y-w)*cR - (x-c) * sR + w;
+
 	return p;
 
 }
@@ -151,12 +154,12 @@ int main(void)
 	{
 		cnt++;
 		capture >> frame;
-		//if (cnt % 2 == 0)
-		//	continue;
+		if (cnt % 4 !=  0)
+			continue;
 		cv_image<bgr_pixel> cimg(frame);
 		std::vector<dlib::rectangle> faces;
 		faces = detector(cimg);
-
+		
 		for (unsigned long i = 0; i < faces.size(); i++)
 		{
 			full_object_detection shape = sp(cimg, faces[i]);
