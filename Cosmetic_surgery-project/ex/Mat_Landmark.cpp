@@ -9,12 +9,18 @@
 #include<opencv2/opencv.hpp>
 #include <opencv2/core/core_c.h>
 #include <math.h>
+#define IN_IMG(x, lo,hi) (x<lo) ? lo : x> hi ? hi : x
 #define RAD_TO_DEG (45.0/(atan((double)1)))
 using namespace std;
 using namespace dlib;
 using namespace cv;
 
+void interpolation(Mat *base)
+{
+	
+}
 //각도조절
+//math.h 의 삼각함수 메서드들은 라디안으로 리턴.
 double changeAngle(const dlib::full_object_detection& d)
 {
 	int new_x = d.part(27).x() - d.part(30).x();
@@ -38,23 +44,23 @@ Mat changeSize(Mat &add, const dlib::full_object_detection& d)
 매개변수3 : dlib로 잡아낸 얼굴의 68개의 위치정보
 */
 typedef struct pos {
-	int x, y;
+	double x, y;
 }pos;
 pos rotate(int x, int y, int c, int w,double theta)
 {
-	float pi = 3.141592;
 	theta = theta-1.53;
 	pos p;
 	double cR = cos(theta);
 	double sR = sin(theta);
 	p.x = (y - w)*sR + (x - c)*cR + c;
 	p.y = (y-w)*cR - (x-c) * sR + w;
-
+	
 	return p;
 
 }
 void addPicture(Mat &base, Mat add, const dlib::full_object_detection& d)
 {
+	Mat tmp = base;
 	pos p;
 	Mat reduce_result = changeSize(add, d);
 	int middle = reduce_result.cols / 2;
@@ -70,16 +76,43 @@ void addPicture(Mat &base, Mat add, const dlib::full_object_detection& d)
 	int mi_x = d.part(57).x();
 	int mi_y = d.part(57).y();
 
-	for (int i = 0; i < reduce_result.cols; i++)
-		for (int j = 0; j < reduce_result.rows; j++)
+	for (int i = 0; i < reduce_result.rows; i++)
+		for (int j = 0; j < reduce_result.cols; j++)
 		{
 			if (reduce_result.at<Vec3b>(i, j)[0] == 255 && reduce_result.at<Vec3b>(i, j)[1] == 255 && reduce_result.at<Vec3b>(i, j)[2] == 255)
 					continue;
-
-			p =rotate(d.part(57).x() - middle + j, d.part(57).y() - first_rows + i, mi_x, mi_y, theta);
+			
+			p =rotate(d.part(57).x() - middle + j, d.part(57).y() - first_rows + i, mi_x, mi_y, theta);		
 			base.at<Vec3b>(p.y,  p.x) = reduce_result.at<Vec3b>(i, j);
 		}
+	for(int i=0; i< base.rows ; i++)
+		for (int j = 0; j < base.cols; j++)
+		{
+			if (base.at<Vec3b>(i, j)[0]== tmp.at<Vec3b>(i, j)[0])
+				continue;
+
+			cout << i << " " << j << endl;
+			base.at<Vec3b>(i, j) = (base.at<Vec3b>(i, j - 1) + base.at<Vec3b>(i, j + 1)) / 2;
+		}
+	/*
+	for(int i=0; i <  base.rows; i++)
+		for(int j=0; j< base.cols; j++)
+			if (base.at<Vec3b>(i, j)[0] == 0 && base.at<Vec3b>(i, j)[1] == 0 && base.at<Vec3b>(i, j)[2] == 0)
+			{
+				if (base.at<Vec3b>(i, j - 1)[0] == 0 && base.at<Vec3b>(i, j - 1)[1] == 0 && base.at<Vec3b>(i, j - 1)[2] == 0)
+					continue;
+				if (base.at<Vec3b>(i, j + 1)[0] == 0 && base.at<Vec3b>(i, j + 1)[1] == 0 && base.at<Vec3b>(i, j + 1)[2] == 0)
+					continue;
+
+				cout << " a";
+				base.at<Vec3b>(i, j)[0] = (base.at<Vec3b>(i, j - 1)[0] + base.at<Vec3b>(i, j + 1)[0]) / 2;
+				base.at<Vec3b>(i, j)[1] = (base.at<Vec3b>(i, j - 1)[1] + base.at<Vec3b>(i, j + 1)[1]) / 2;
+				base.at<Vec3b>(i, j)[2] = (base.at<Vec3b>(i, j - 1)[2] + base.at<Vec3b>(i, j + 1)[2]) / 2;
+				
+			}
+	*/
 }
+
 //얼굴에 점찍기
 void draw_polyline(cv::Mat &img, const dlib::full_object_detection& d, const int start, const int end, bool isClosed = false)
 {
